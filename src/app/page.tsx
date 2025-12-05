@@ -1,3 +1,4 @@
+// src/app/page.tsx
 import { getEventos } from '@/lib/googleSheets';
 
 export default async function HomePage() {
@@ -73,10 +74,9 @@ export default async function HomePage() {
       )}
 
       <p className="text-xs text-zinc-500">
-        Cada linha corresponde a uma linha da aba &quot;Tabela Eventos&quot; da
-        planilha.
+        Cada linha da tabela corresponde a uma linha da aba &quot;Tabela
+        Eventos&quot; da planilha.
       </p>
     </section>
   );
 }
-
