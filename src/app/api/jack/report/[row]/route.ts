@@ -1,3 +1,4 @@
+// src/app/api/jack/report/[row]/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { getEventoByRow } from '@/lib/googleSheets';
 import { JackReport } from '@/types/jack';
@@ -34,7 +35,8 @@ export async function GET(
         local: evento.local,
         endereco: evento.endereco,
         horario_evento: evento.horario,
-        bar: evento.local, // por enquanto reaproveito o local
+        // se quiser, pode montar algo tipo "Bar Jack & Coke + Maracujack"
+        bar: evento.local,
         pax: evento.pax,
       },
       slide5: {
@@ -45,7 +47,8 @@ export async function GET(
         total_drinks: totalDrinks,
       },
       slide6: {
-        foto_url: null, // depois a gente conecta com upload/foto
+        // por enquanto deixo null; depois você pode salvar uma URL de foto na planilha
+        foto_url: null,
       },
     };
 
