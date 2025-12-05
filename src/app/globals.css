@@ -1,51 +1,48 @@
-/* src/app/globals.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-/* Reset básico */
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
-
-html,
+/* Fundo geral com vibe Jack + dark */
 body {
-  margin: 0;
-  padding: 0;
+  @apply bg-gradient-to-br from-black via-jack-dark to-black text-zinc-50 font-jackBody;
 }
 
-/* Dark mode básico pra combinar com o layout */
-:root {
-  color-scheme: dark;
+/* Scrollbar discreta */
+*::-webkit-scrollbar {
+  width: 8px;
 }
 
-body {
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
-    sans-serif;
-  background: radial-gradient(circle at top, #09090b 0, #020617 50%, #000 100%);
-  color: #f4f4f5;
+*::-webkit-scrollbar-track {
+  background: rgba(12, 12, 16, 0.8);
 }
 
-/* Deixa os links bonitinhos */
-a {
-  color: inherit;
-  text-decoration: none;
+*::-webkit-scrollbar-thumb {
+  background: rgba(80, 80, 90, 0.9);
+  border-radius: 999px;
 }
 
-a:hover {
-  text-decoration: none;
+/* Card padrão glass */
+.glass-card {
+  @apply rounded-2xl border border-white/5 bg-zinc-900/40 backdrop-blur-xl shadow-glass-soft;
 }
 
-/* Table básica pra lista de eventos */
-table {
-  border-collapse: collapse;
+/* Botão principal Jack */
+.button-jack {
+  @apply inline-flex items-center justify-center rounded-full border border-jack-gold/50 bg-gradient-to-r from-zinc-950/80 via-zinc-900/90 to-zinc-950/80 px-4 py-2 text-sm font-medium text-zinc-50 tracking-wide transition-all hover:border-jack-gold hover:shadow-[0_0_20px_rgba(207,163,95,0.45)];
 }
 
-th,
-td {
-  border: 0;
+/* Título Jack */
+.title-jack {
+  @apply font-jackTitle text-2xl md:text-3xl tracking-[0.12em] uppercase text-zinc-50;
 }
 
-/* Só pra garantir que o main ocupe a largura toda no mobile */
-main {
-  min-height: 60vh;
+/* Subtítulo / label */
+.subtitle-jack {
+  @apply text-xs uppercase tracking-[0.25em] text-zinc-500;
+}
+
+/* Tabela slim */
+.table-jack th,
+.table-jack td {
+  @apply px-4 py-2 align-middle;
 }
