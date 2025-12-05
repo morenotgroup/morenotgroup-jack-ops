@@ -2,6 +2,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import "./globals.css";
+import { NavTabs } from "@/components/NavTabs";
 
 export const metadata: Metadata = {
   title: "Jack Ops — T Group",
@@ -27,7 +28,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               + Novo evento
             </a>
           </header>
-          <main className="glass-card p-4 md:p-6">{children}</main>
+
+          <NavTabs />
+
+          <main className="glass-card p-4 md:p-6 mt-2">{children}</main>
         </div>
       </body>
     </html>
