@@ -1,9 +1,19 @@
 // src/app/page.tsx
 import { getEventos } from "@/lib/googleSheets";
+import type { Evento, DrinkName } from "@/types/jack";
+
+const DRINK_SHORT_LABELS: Record<DrinkName, string> = {
+  "MaracuJack": "MJ",
+  "Jack & Coke": "J&C",
+  "Jack Honey & Lemonade": "Honey+Lem",
+  "Jack Apple & Lemonade": "Apple+Lem",
+  "Jack Apple & Tonic": "Apple+Tonic",
+  "Jack Fire & Ginger": "Fire+Ginger"
+};
 
 export default async function HomePage() {
   let error: string | null = null;
-  let eventos: any[] = [];
+  let eventos: Evento[] = [];
 
   try {
     eventos = await getEventos();
@@ -47,16 +57,27 @@ export default async function HomePage() {
                 <th className="text-left font-medium text-zinc-300">Data</th>
                 <th className="text-left font-medium text-zinc-300">Local</th>
                 <th className="text-left font-medium text-zinc-300">Pax</th>
-                <th className="text-left font-medium text-zinc-300">Drinks</th>
+                <th className="text-left font-medium text-zinc-300">
+                  Drinks (total / por tipo)
+                </th>
               </tr>
             </thead>
             <tbody>
               {eventos.map((ev) => {
                 const totalDrinks = ev.drinks.reduce(
-                  (acc: number, d: { quantidade: number }) =>
-                    acc + (d.quantidade || 0),
+                  (acc, d) => acc + (d.quantidade || 0),
                   0
                 );
+
+                const breakdown = ev.drinks
+                  .filter((d) => d.quantidade && d.quantidade > 0)
+                  .map((d) => {
+                    const short =
+                      DRINK_SHORT_LABELS[d.nome as DrinkName] ?? d.nome;
+                    return `${d.quantidade} ${short}`;
+                  })
+                  .join(" · ");
+
                 return (
                   <tr
                     key={ev.rowIndex}
@@ -71,7 +92,14 @@ export default async function HomePage() {
                     <td className="text-zinc-200">
                       {ev.pax ?? <span className="text-zinc-500">—</span>}
                     </td>
-                    <td className="text-zinc-200">{totalDrinks} drinks</td>
+                    <td className="text-zinc-200">
+                      {totalDrinks} drinks
+                      {breakdown && (
+                        <span className="mt-0.5 block text-xs text-zinc-500">
+                          {breakdown}
+                        </span>
+                      )}
+                    </td>
                   </tr>
                 );
               })}
