@@ -13,18 +13,21 @@ function getSheetsClient() {
   if (sheetsClient) return sheetsClient;
 
   const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-  const key = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
+  const rawKey = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
 
-  if (!email || !key) {
+  if (!email || !rawKey) {
     throw new Error(
       'Faltou GOOGLE_SERVICE_ACCOUNT_EMAIL ou GOOGLE_SERVICE_ACCOUNT_KEY nas env vars da Vercel.',
     );
   }
 
+  // Converte "\n" literais em quebras de linha reais para o formato PEM
+  const key = rawKey.replace(/\\n/g, '\n');
+
   const auth = new google.auth.JWT(
     email,
     undefined,
-    key, // aqui usamos o key com quebras de linha normais
+    key,
     ['https://www.googleapis.com/auth/spreadsheets'],
   );
 
@@ -97,6 +100,7 @@ async function getEventosRawRange() {
 
 function buildHeaderIndexMap(headerRow: string[]): HeaderIndexMap {
   const indices: any = {};
+
   (Object.keys(EVENT_HEADERS) as (keyof typeof EVENT_HEADERS)[]).forEach(
     (key) => {
       const colName = EVENT_HEADERS[key];
@@ -141,7 +145,7 @@ export async function getEventos(): Promise<Evento[]> {
     const rowIndex = i + 1; // linha real na planilha (1 = cabeçalho)
 
     const nome = row[map.evento] ?? '';
-    if (!nome) continue; // pula linhas vazias
+    if (!nome) continue; // pula linhas realmente vazias
 
     const data = row[map.data] ?? '';
     const local = row[map.local] ?? '';
