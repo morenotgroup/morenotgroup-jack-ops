@@ -1,10 +1,16 @@
 // src/lib/googleSheets.ts
-import { google, sheets_v4 } from 'googleapis';
-import { DRINK_HEADER_NAMES, Evento, NovoEventoInput } from '@/types/jack';
+import { google, sheets_v4 } from "googleapis";
+import { DRINK_HEADER_NAMES, Evento, NovoEventoInput } from "@/types/jack";
 
 const SHEET_ID = process.env.GOOGLE_SHEETS_JACK_ID;
-if (!SHEET_ID) {
-  throw new Error('Faltou configurar GOOGLE_SHEETS_JACK_ID no .env / Vercel');
+
+function ensureSheetId(): string {
+  if (!SHEET_ID) {
+    throw new Error(
+      "Faltou configurar GOOGLE_SHEETS_JACK_ID nas variáveis de ambiente da Vercel."
+    );
+  }
+  return SHEET_ID;
 }
 
 let sheetsClient: sheets_v4.Sheets | null = null;
@@ -17,30 +23,28 @@ function getSheetsClient() {
 
   if (!email || !rawKey) {
     throw new Error(
-      'Faltou GOOGLE_SERVICE_ACCOUNT_EMAIL ou GOOGLE_SERVICE_ACCOUNT_KEY nas env vars da Vercel.',
+      "Faltou GOOGLE_SERVICE_ACCOUNT_EMAIL ou GOOGLE_SERVICE_ACCOUNT_KEY nas variáveis de ambiente da Vercel."
     );
   }
 
   // Converte "\n" literais em quebras de linha reais para o formato PEM
-  const key = rawKey.replace(/\\n/g, '\n');
+  const key = rawKey.replace(/\\n/g, "\n");
 
-  const auth = new google.auth.JWT(
-    email,
-    undefined,
-    key,
-    ['https://www.googleapis.com/auth/spreadsheets'],
-  );
+  const auth = new google.auth.JWT(email, undefined, key, [
+    "https://www.googleapis.com/auth/spreadsheets"
+  ]);
 
-  sheetsClient = google.sheets({ version: 'v4', auth });
+  sheetsClient = google.sheets({ version: "v4", auth });
   return sheetsClient;
 }
 
 export async function getSheetValues(range: string): Promise<string[][]> {
   const sheets = getSheetsClient();
+  const spreadsheetId = ensureSheetId();
 
   const res = await sheets.spreadsheets.values.get({
-    spreadsheetId: SHEET_ID!,
-    range,
+    spreadsheetId,
+    range
   });
 
   const values = res.data.values ?? [];
@@ -49,18 +53,19 @@ export async function getSheetValues(range: string): Promise<string[][]> {
 
 export async function appendRow(
   range: string,
-  row: (string | number | null)[],
+  row: (string | number | null)[]
 ): Promise<number | null> {
   const sheets = getSheetsClient();
+  const spreadsheetId = ensureSheetId();
 
   const res = await sheets.spreadsheets.values.append({
-    spreadsheetId: SHEET_ID!,
+    spreadsheetId,
     range,
-    valueInputOption: 'USER_ENTERED',
-    insertDataOption: 'INSERT_ROWS',
+    valueInputOption: "USER_ENTERED",
+    insertDataOption: "INSERT_ROWS",
     requestBody: {
-      values: [row],
-    },
+      values: [row]
+    }
   });
 
   const updatedRange = res.data.updates?.updatedRange; // ex: 'Tabela Eventos'!A12:Z12
@@ -77,15 +82,15 @@ export async function appendRow(
 // JACK — TABELA EVENTOS
 // -----------------------
 
-const ABA_EVENTOS = 'Tabela Eventos';
+const ABA_EVENTOS = "Tabela Eventos";
 
 const EVENT_HEADERS = {
-  evento: 'Evento',
-  data: 'Data',
-  local: 'Local',
-  endereco: 'Endereço',
-  pax: 'Pax',
-  horario: 'Horário',
+  evento: "Evento",
+  data: "Data",
+  local: "Local",
+  endereco: "Endereço",
+  pax: "Pax",
+  horario: "Horário"
 } as const;
 
 type HeaderIndexMap = {
@@ -99,7 +104,7 @@ async function getEventosRawRange() {
 }
 
 function buildHeaderIndexMap(headerRow: string[]): HeaderIndexMap {
-  const indices: any = {};
+  const indices: Partial<Record<keyof typeof EVENT_HEADERS, number>> = {};
 
   (Object.keys(EVENT_HEADERS) as (keyof typeof EVENT_HEADERS)[]).forEach(
     (key) => {
@@ -107,11 +112,11 @@ function buildHeaderIndexMap(headerRow: string[]): HeaderIndexMap {
       const index = headerRow.indexOf(colName);
       if (index === -1) {
         throw new Error(
-          `Coluna "${colName}" não encontrada na aba "${ABA_EVENTOS}". Verifique o cabeçalho.`,
+          `Coluna "${colName}" não encontrada na aba "${ABA_EVENTOS}". Verifique o cabeçalho.`
         );
       }
       indices[key] = index;
-    },
+    }
   );
 
   const drinkCols: { nome: string; index: number }[] = [];
@@ -123,8 +128,8 @@ function buildHeaderIndexMap(headerRow: string[]): HeaderIndexMap {
   });
 
   return {
-    ...indices,
-    drinkCols,
+    ...(indices as Record<keyof typeof EVENT_HEADERS, number>),
+    drinkCols
   };
 }
 
@@ -144,18 +149,18 @@ export async function getEventos(): Promise<Evento[]> {
 
     const rowIndex = i + 1; // linha real na planilha (1 = cabeçalho)
 
-    const nome = row[map.evento] ?? '';
+    const nome = row[map.evento] ?? "";
     if (!nome) continue; // pula linhas realmente vazias
 
-    const data = row[map.data] ?? '';
-    const local = row[map.local] ?? '';
-    const endereco = row[map.endereco] ?? '';
-    const horario = row[map.horario] ?? '';
-    const paxRaw = row[map.pax] ?? '';
+    const data = row[map.data] ?? "";
+    const local = row[map.local] ?? "";
+    const endereco = row[map.endereco] ?? "";
+    const horario = row[map.horario] ?? "";
+    const paxRaw = row[map.pax] ?? "";
     const pax = paxRaw ? Number(paxRaw) || null : null;
 
     const drinks = map.drinkCols.map(({ nome, index }) => {
-      const val = row[index] ?? '';
+      const val = row[index] ?? "";
       const quantidade = val ? Number(val) || 0 : 0;
       return { nome: nome as any, quantidade };
     });
@@ -168,7 +173,7 @@ export async function getEventos(): Promise<Evento[]> {
       endereco,
       pax,
       horario,
-      drinks,
+      drinks
     });
   }
 
@@ -176,7 +181,7 @@ export async function getEventos(): Promise<Evento[]> {
 }
 
 export async function getEventoByRow(
-  rowIndex: number,
+  rowIndex: number
 ): Promise<Evento | null> {
   const eventos = await getEventos();
   return eventos.find((e) => e.rowIndex === rowIndex) ?? null;
@@ -187,8 +192,8 @@ export async function addEvento(input: NovoEventoInput): Promise<Evento> {
   const map = buildHeaderIndexMap(header);
 
   const rowTemplate: (string | number | null)[] = new Array(
-    header.length,
-  ).fill('');
+    header.length
+  ).fill("");
 
   rowTemplate[map.evento] = input.nome;
   rowTemplate[map.data] = input.data;
@@ -200,20 +205,20 @@ export async function addEvento(input: NovoEventoInput): Promise<Evento> {
   }
 
   map.drinkCols.forEach(({ nome, index }) => {
-    const quantidade = input.drinks[nome as keyof typeof input.drinks] ?? 0;
+    const quantidade = input.drinks[nome] ?? 0;
     rowTemplate[index] = quantidade;
   });
 
   const newRowIndex = await appendRow(`${ABA_EVENTOS}!A:Z`, rowTemplate);
 
   if (!newRowIndex) {
-    throw new Error('Não foi possível determinar o índice da nova linha.');
+    throw new Error("Não foi possível determinar o índice da nova linha.");
   }
 
   const evento = await getEventoByRow(newRowIndex);
   if (!evento) {
     throw new Error(
-      `Evento criado na linha ${newRowIndex}, mas não foi possível reler os dados.`,
+      `Evento criado na linha ${newRowIndex}, mas não foi possível reler os dados.`
     );
   }
 
