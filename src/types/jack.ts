@@ -1,7 +1,8 @@
 // src/types/jack.ts
 
+// Esses nomes PRECISAM bater exatamente com os cabeçalhos da aba "Tabela Eventos"
 export const DRINK_HEADER_NAMES = [
-  "Maracujack",
+  "MaracuJack",
   "Jack & Coke",
   "Jack Honey & Lemonade",
   "Jack Apple & Lemonade",
@@ -12,7 +13,7 @@ export const DRINK_HEADER_NAMES = [
 export type DrinkName = (typeof DRINK_HEADER_NAMES)[number];
 
 export type Evento = {
-  rowIndex: number;
+  rowIndex: number; // número da linha real na planilha
   nome: string;
   data: string;
   local: string;
@@ -28,10 +29,10 @@ export type Evento = {
 export type NovoEventoInput = {
   nome: string;
   data: string;
-  local: string;
-  endereco: string;
+  local?: string;
+  endereco?: string;
   pax: number | null;
-  horario: string;
+  horario?: string;
   drinks: {
     [K in DrinkName]?: number;
   };
