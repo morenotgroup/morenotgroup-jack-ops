@@ -1,13 +1,18 @@
 // src/lib/googleSheets.ts
 import { google, sheets_v4 } from "googleapis";
-import { DRINK_HEADER_NAMES, Evento, NovoEventoInput } from "@/types/jack";
+import {
+  DRINK_HEADER_NAMES,
+  DrinkName,
+  Evento,
+  NovoEventoInput
+} from "@/types/jack";
 
 const SHEET_ID = process.env.GOOGLE_SHEETS_JACK_ID;
 
 function ensureSheetId(): string {
   if (!SHEET_ID) {
     throw new Error(
-      "Faltou configurar GOOGLE_SHEETS_JACK_ID nas variáveis de ambiente da Vercel."
+      'Faltou configurar GOOGLE_SHEETS_JACK_ID nas variáveis de ambiente da Vercel.'
     );
   }
   return SHEET_ID;
@@ -27,7 +32,7 @@ function getSheetsClient() {
     );
   }
 
-  // Converte "\n" literais em quebras de linha reais para o formato PEM
+  // Converte "\n" literais do painel da Vercel em quebras de linha reais
   const key = rawKey.replace(/\\n/g, "\n");
 
   const auth = new google.auth.JWT(email, undefined, key, [
@@ -38,7 +43,7 @@ function getSheetsClient() {
   return sheetsClient;
 }
 
-export async function getSheetValues(range: string): Promise<string[][]> {
+export async function getSheetValues(range: string): Promise<any[][]> {
   const sheets = getSheetsClient();
   const spreadsheetId = ensureSheetId();
 
@@ -47,8 +52,7 @@ export async function getSheetValues(range: string): Promise<string[][]> {
     range
   });
 
-  const values = res.data.values ?? [];
-  return values as string[][];
+  return (res.data.values ?? []) as any[][];
 }
 
 export async function appendRow(
@@ -84,98 +88,164 @@ export async function appendRow(
 
 const ABA_EVENTOS = "Tabela Eventos";
 
-const EVENT_HEADERS = {
-  evento: "Evento",
-  data: "Data",
-  local: "Local",
-  endereco: "Endereço",
-  pax: "Pax",
-  horario: "Horário"
-} as const;
-
 type HeaderIndexMap = {
-  [K in keyof typeof EVENT_HEADERS]: number;
-} & {
-  drinkCols: { nome: string; index: number }[];
+  evento: number;
+  data: number;
+  pax: number;
+  horario: number;
+  local: number | null;
+  endereco: number | null;
+  drinkCols: { nome: DrinkName; index: number }[];
 };
 
-async function getEventosRawRange() {
-  return getSheetValues(`${ABA_EVENTOS}!A1:Z500`);
-}
+/**
+ * Lê a aba "Tabela Eventos" e:
+ * - identifica em qual linha está o cabeçalho (a que contém "Evento")
+ * - devolve o cabeçalho, as linhas de dados e o número da linha do cabeçalho na planilha
+ */
+async function getEventosTable(): Promise<{
+  header: any[];
+  data: any[][];
+  headerRowNumber: number;
+}> {
+  const all = await getSheetValues(`${ABA_EVENTOS}!A1:Z500`);
 
-function buildHeaderIndexMap(headerRow: string[]): HeaderIndexMap {
-  const indices: Partial<Record<keyof typeof EVENT_HEADERS, number>> = {};
+  if (!all.length) {
+    return { header: [], data: [], headerRowNumber: 0 };
+  }
 
-  (Object.keys(EVENT_HEADERS) as (keyof typeof EVENT_HEADERS)[]).forEach(
-    (key) => {
-      const colName = EVENT_HEADERS[key];
-      const index = headerRow.indexOf(colName);
-      if (index === -1) {
-        throw new Error(
-          `Coluna "${colName}" não encontrada na aba "${ABA_EVENTOS}". Verifique o cabeçalho.`
-        );
-      }
-      indices[key] = index;
-    }
+  // Procura a PRIMEIRA linha que contenha "Evento" em alguma coluna
+  const headerIndex = all.findIndex((row) =>
+    row?.some(
+      (cell: any) =>
+        typeof cell === "string" &&
+        cell.trim().toLowerCase() === "evento".toLowerCase()
+    )
   );
 
-  const drinkCols: { nome: string; index: number }[] = [];
+  if (headerIndex === -1) {
+    throw new Error(
+      `Cabeçalho não encontrado na aba "${ABA_EVENTOS}" (não encontrei a coluna "Evento"). Verifique se a linha de títulos está correta.`
+    );
+  }
+
+  const header = all[headerIndex] ?? [];
+  const data = all.slice(headerIndex + 1);
+  const headerRowNumber = headerIndex + 1; // 1-based (planilha)
+
+  return { header, data, headerRowNumber };
+}
+
+function buildHeaderIndexMap(headerRow: any[]): HeaderIndexMap {
+  const getRequiredIndex = (name: string): number => {
+    const idx = headerRow.findIndex(
+      (cell: any) => typeof cell === "string" && cell.trim() === name
+    );
+    if (idx === -1) {
+      throw new Error(
+        `Coluna "${name}" não encontrada na aba "${ABA_EVENTOS}". Verifique o cabeçalho.`
+      );
+    }
+    return idx;
+  };
+
+  // obrigatórias: estão na tua planilha atual
+  const eventoIdx = getRequiredIndex("Evento");
+  const dataIdx = getRequiredIndex("Data");
+  const paxIdx = getRequiredIndex("Pax");
+  const horarioIdx = getRequiredIndex("Horário");
+
+  // opcionais: hoje não existem na planilha, mas se você criar "Local" e "Endereço" ele já passa a usar
+  const findOptionalIndex = (name: string): number | null => {
+    const idx = headerRow.findIndex(
+      (cell: any) => typeof cell === "string" && cell.trim() === name
+    );
+    return idx === -1 ? null : idx;
+  };
+
+  const localIdx = findOptionalIndex("Local");
+  const enderecoIdx = findOptionalIndex("Endereço");
+
+  const drinkCols: { nome: DrinkName; index: number }[] = [];
+
   DRINK_HEADER_NAMES.forEach((drinkName) => {
-    const idx = headerRow.indexOf(drinkName);
+    const idx = headerRow.findIndex(
+      (cell: any) => typeof cell === "string" && cell.trim() === drinkName
+    );
     if (idx !== -1) {
       drinkCols.push({ nome: drinkName, index: idx });
     }
   });
 
   return {
-    ...(indices as Record<keyof typeof EVENT_HEADERS, number>),
+    evento: eventoIdx,
+    data: dataIdx,
+    pax: paxIdx,
+    horario: horarioIdx,
+    local: localIdx,
+    endereco: enderecoIdx,
     drinkCols
   };
 }
 
 export async function getEventos(): Promise<Evento[]> {
-  const values = await getEventosRawRange();
+  const { header, data, headerRowNumber } = await getEventosTable();
+  if (!header.length) return [];
 
-  if (!values.length) return [];
-
-  const header = values[0];
   const map = buildHeaderIndexMap(header);
 
   const eventos: Evento[] = [];
 
-  for (let i = 1; i < values.length; i++) {
-    const row = values[i];
-    if (!row || row.length === 0) continue;
-
-    const rowIndex = i + 1; // linha real na planilha (1 = cabeçalho)
+  data.forEach((rowRaw, idx) => {
+    const row = rowRaw ?? [];
 
     const nome = row[map.evento] ?? "";
-    if (!nome) continue; // pula linhas realmente vazias
+    if (!nome) return; // pula linhas vazias de fato
 
-    const data = row[map.data] ?? "";
-    const local = row[map.local] ?? "";
-    const endereco = row[map.endereco] ?? "";
+    const dataVal = row[map.data] ?? "";
+    const dataStr =
+      typeof dataVal === "string"
+        ? dataVal
+        : dataVal instanceof Date
+        ? dataVal.toISOString().slice(0, 10)
+        : String(dataVal ?? "");
+
+    const paxRaw = row[map.pax];
+    let pax: number | null = null;
+    if (paxRaw !== undefined && paxRaw !== null && paxRaw !== "") {
+      const n = Number(paxRaw);
+      pax = Number.isNaN(n) ? null : n;
+    }
+
     const horario = row[map.horario] ?? "";
-    const paxRaw = row[map.pax] ?? "";
-    const pax = paxRaw ? Number(paxRaw) || null : null;
+
+    const local =
+      map.local != null && map.local >= 0 ? row[map.local] ?? "" : "";
+    const endereco =
+      map.endereco != null && map.endereco >= 0
+        ? row[map.endereco] ?? ""
+        : "";
 
     const drinks = map.drinkCols.map(({ nome, index }) => {
-      const val = row[index] ?? "";
-      const quantidade = val ? Number(val) || 0 : 0;
-      return { nome: nome as any, quantidade };
+      const v = row[index];
+      const n = v === "" || v == null ? 0 : Number(v) || 0;
+      return { nome, quantidade: n };
     });
+
+    // linha na planilha: cabeçalho + 1 (primeira linha de dados) + offset
+    const rowIndex = headerRowNumber + 1 + idx;
 
     eventos.push({
       rowIndex,
-      nome,
-      data,
-      local,
-      endereco,
+      nome: String(nome),
+      data: dataStr,
+      local: String(local ?? ""),
+      endereco: String(endereco ?? ""),
       pax,
-      horario,
+      horario: String(horario ?? ""),
       drinks
     });
-  }
+  });
 
   return eventos;
 }
@@ -188,7 +258,13 @@ export async function getEventoByRow(
 }
 
 export async function addEvento(input: NovoEventoInput): Promise<Evento> {
-  const [header] = await getSheetValues(`${ABA_EVENTOS}!A1:Z1`);
+  const { header } = await getEventosTable();
+  if (!header.length) {
+    throw new Error(
+      `Não foi possível ler o cabeçalho da aba "${ABA_EVENTOS}".`
+    );
+  }
+
   const map = buildHeaderIndexMap(header);
 
   const rowTemplate: (string | number | null)[] = new Array(
@@ -197,9 +273,15 @@ export async function addEvento(input: NovoEventoInput): Promise<Evento> {
 
   rowTemplate[map.evento] = input.nome;
   rowTemplate[map.data] = input.data;
-  rowTemplate[map.local] = input.local;
-  rowTemplate[map.endereco] = input.endereco;
-  rowTemplate[map.horario] = input.horario;
+
+  if (map.local != null && map.local >= 0) {
+    rowTemplate[map.local] = input.local ?? "";
+  }
+  if (map.endereco != null && map.endereco >= 0) {
+    rowTemplate[map.endereco] = input.endereco ?? "";
+  }
+
+  rowTemplate[map.horario] = input.horario ?? "";
   if (input.pax != null) {
     rowTemplate[map.pax] = input.pax;
   }
