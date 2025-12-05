@@ -1,0 +1,51 @@
+/* src/app/globals.css */
+
+/* Reset básico */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+/* Dark mode básico pra combinar com o layout */
+:root {
+  color-scheme: dark;
+}
+
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    sans-serif;
+  background: radial-gradient(circle at top, #09090b 0, #020617 50%, #000 100%);
+  color: #f4f4f5;
+}
+
+/* Deixa os links bonitinhos */
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: none;
+}
+
+/* Table básica pra lista de eventos */
+table {
+  border-collapse: collapse;
+}
+
+th,
+td {
+  border: 0;
+}
+
+/* Só pra garantir que o main ocupe a largura toda no mobile */
+main {
+  min-height: 60vh;
+}
