@@ -1,16 +1,18 @@
+// src/types/jack.ts
+
 export const DRINK_HEADER_NAMES = [
-  'Maracujack',
-  'Jack & Coke',
-  'Jack Honey & Lemonade',
-  'Jack Apple & Lemonade',
-  'Jack Apple & Tonic',
-  'Jack Fire & Ginger',
+  "Maracujack",
+  "Jack & Coke",
+  "Jack Honey & Lemonade",
+  "Jack Apple & Lemonade",
+  "Jack Apple & Tonic",
+  "Jack Fire & Ginger"
 ] as const;
 
 export type DrinkName = (typeof DRINK_HEADER_NAMES)[number];
 
 export type Evento = {
-  rowIndex: number; // índice da linha na planilha (2,3,4...)
+  rowIndex: number;
   nome: string;
   data: string;
   local: string;
